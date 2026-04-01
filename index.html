@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سجل متابعة موظفين ساجا الصيادلة</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<!-- Firebase -->
+<script type="module" id="firebase-init">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA2_Jsv3jyre4Hu0iaew5bzprkN9fdhSi4",
+    authDomain: "saja-pharmacy.firebaseapp.com",
+    projectId: "saja-pharmacy",
+    storageBucket: "saja-pharmacy.firebasestorage.app",
+    messagingSenderId: "292288798852",
+    appId: "1:292288798852:web:23fc2fcdf26c032493e2d1",
+    measurementId: "G-V1Y2GR9RB5"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  window.__firebase = {
+    db,
+    collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot
+  };
+  window.dispatchEvent(new Event("firebase-ready"));
+</script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'IBM Plex Sans Arabic',sans-serif;background:#f0f4f8;min-height:100vh;direction:rtl}
+  :root{
+    --green:#10b981;--green-light:#d1fae5;--green-dark:#065f46;
+    --orange:#f59e0b;--orange-light:#fef3c7;--orange-dark:#92400e;
+    --red:#ef4444;--red-light:#fee2e2;--red-dark:#7f1d1d;
+    --blue:#3b82f6;--blue-light:#dbeafe;
+    --gray:#6b7280;--gray-light:#f3f4f6;
+    --white:#ffffff;--border:#e5e7eb;
+    --shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md:0 4px 6px rgba(0,0,0,0.07),0 2px 4px rgba(0,0,0,0.05);
+  }
+  .app{display:flex;flex-direction:column;min-height:100vh}
+  .header{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+  .logo{display:flex;align-items:center;gap:10px}
+  .logo-icon{width:36px;height:36px;background:linear-gradient(135deg,#059669,#10b981);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:700}
+  .logo-text{font-size:15px;font-weight:700;color:#111827;line-height:1.2}
+  .logo-sub{font-size:11px;color:var(--gray);font-weight:400}
+  .header-actions{display:flex;align-items:center;gap:10px}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all 0.2s;font-family:inherit}
+  .btn-primary{background:linear-gradient(135deg,#059669,#10b981);color:#fff;box-shadow:0 2px 4px rgba(16,185,129,0.3)}
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 8px rgba(16,185,129,0.35)}
+  .btn-ghost{background:transparent;color:var(--gray);border:1px solid var(--border)}
+  .btn-ghost:hover{background:var(--gray-light)}
+  .main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%}
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+  .stat-card{background:#fff;border-radius:16px;padding:20px;box-shadow:var(--shadow);border:1px solid var(--border);display:flex;align-items:center;gap:16px;transition:transform 0.2s,box-shadow 0.2s}
+  .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+  .stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+  .stat-info{flex:1}
+  .stat-value{font-size:28px;font-weight:700;color:#111827;line-height:1}
+  .stat-label{font-size:12px;color:var(--gray);margin-top:4px;font-weight:500}
+  .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .search-wrap{flex:1;position:relative}
+  .search-wrap input{width:100%;padding:10px 16px 10px 40px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;color:#111827;background:#fff;outline:none;transition:border-color 0.2s,box-shadow 0.2s;direction:rtl}
+  .search-wrap input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+  .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--gray);font-size:14px;pointer-events:none}
+  .view-toggle{display:flex;background:var(--gray-light);border-radius:8px;padding:3px;gap:2px}
+  .view-btn{padding:6px 10px;border-radius:6px;border:none;background:transparent;cursor:pointer;color:var(--gray);font-size:14px;transition:all 0.2s}
+  .view-btn.active{background:#fff;color:#111827;box-shadow:var(--shadow)}
+  .filter-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+  .filter-tab{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--gray);transition:all 0.2s;font-family:inherit}
+  .filter-tab.active-all{background:#111827;color:#fff;border-color:#111827}
+  .filter-tab.active-valid{background:var(--green-light);color:var(--green-dark);border-color:var(--green)}
+  .filter-tab.active-soon{background:var(--orange-light);color:var(--orange-dark);border-color:var(--orange)}
+  .filter-tab.active-expired{background:var(--red-light);color:var(--red-dark);border-color:var(--red)}
+  .table-wrap{background:#fff;border-radius:16px;box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden}
+  table{width:100%;border-collapse:collapse}
+  th{background:#f8fafc;padding:12px 16px;text-align:right;font-size:11px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border)}
+  td{padding:14px 16px;border-bottom:1px solid #f3f4f6;vertical-align:middle;font-size:13px;color:#374151}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#fafafa}
+  .employee-name{font-weight:600;color:#111827;font-size:14px}
+  .employee-id{font-size:11px;color:var(--gray);margin-top:2px}
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600}
+  .badge-valid{background:var(--green-light);color:var(--green-dark)}
+  .badge-soon{background:var(--orange-light);color:var(--orange-dark)}
+  .badge-expired{background:var(--red-light);color:var(--red-dark)}
+  .progress-bar{height:6px;background:#e5e7eb;border-radius:99px;overflow:hidden;min-width:80px}
+  .progress-fill{height:100%;border-radius:99px;transition:width 0.5s}
+  .progress-valid{background:var(--green)}
+  .progress-soon{background:var(--orange)}
+  .progress-expired{background:var(--red)}
+  .action-btn{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:13px;transition:all 0.2s;margin:0 2px}
+  .action-btn:hover{background:var(--gray-light)}
+  .action-edit:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-light)}
+  .action-delete:hover{border-color:var(--red);color:var(--red);background:var(--red-light)}
+  .grid-view{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  .employee-card{background:#fff;border-radius:16px;padding:20px;box-shadow:var(--shadow);border:1px solid var(--border);transition:transform 0.2s,box-shadow 0.2s;position:relative;overflow:hidden}
+  .employee-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
+  .card-accent{position:absolute;top:0;left:0;right:0;height:4px}
+  .card-accent-valid{background:linear-gradient(90deg,var(--green),#34d399)}
+  .card-accent-soon{background:linear-gradient(90deg,var(--orange),#fbbf24)}
+  .card-accent-expired{background:linear-gradient(90deg,var(--red),#f87171)}
+  .card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+  .card-avatar{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0}
+  .avatar-valid{background:linear-gradient(135deg,var(--green),#34d399)}
+  .avatar-soon{background:linear-gradient(135deg,var(--orange),#fbbf24)}
+  .avatar-expired{background:linear-gradient(135deg,var(--red),#f87171)}
+  .card-name{font-size:15px;font-weight:700;color:#111827}
+  .card-ids{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .card-id-item{background:#f8fafc;border-radius:8px;padding:8px 10px}
+  .card-id-label{font-size:10px;color:var(--gray);font-weight:500;margin-bottom:2px}
+  .card-id-value{font-size:12px;font-weight:600;color:#374151}
+  .card-expiry{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+  .card-expiry-label{font-size:11px;color:var(--gray);margin-bottom:6px}
+  .card-expiry-date{font-size:13px;font-weight:600;color:#111827;margin-bottom:8px}
+  .card-actions{display:flex;gap:8px;margin-top:14px}
+  .card-action-btn{flex:1;padding:7px;border-radius:8px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:12px;font-weight:500;transition:all 0.2s;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--gray)}
+  .card-action-btn:hover{background:var(--gray-light)}
+  .card-edit:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-light)}
+  .card-delete:hover{border-color:var(--red);color:var(--red);background:var(--red-light)}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(2px)}
+  .modal{background:#fff;border-radius:20px;padding:28px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.15);animation:slideUp 0.25s ease}
+  @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .modal-title{font-size:18px;font-weight:700;color:#111827;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+  .form-group{margin-bottom:16px}
+  .form-label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px}
+  .form-input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;color:#111827;outline:none;transition:border-color 0.2s,box-shadow 0.2s;direction:rtl}
+  .form-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+  .modal-actions{display:flex;gap:10px;margin-top:24px}
+  .empty-state{text-align:center;padding:60px 20px;color:var(--gray)}
+  .empty-icon{font-size:48px;margin-bottom:12px;opacity:0.4}
+  .empty-text{font-size:15px;font-weight:500}
+  .empty-sub{font-size:13px;margin-top:4px;opacity:0.7}
+  .loading{text-align:center;padding:60px;color:var(--gray);font-size:14px}
+  .loading-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .firebase-badge{display:inline-flex;align-items:center;gap:5px;background:#fff7ed;border:1px solid #fed7aa;border-radius:20px;padding:4px 10px;font-size:11px;color:#c2410c;font-weight:500}
+  @media(max-width:768px){
+    .stats-grid{grid-template-columns:repeat(2,1fr)}
+    .grid-view{grid-template-columns:1fr}
+    .logo-sub{display:none}
+  }
+  @media(max-width:480px){
+    .stats-grid{grid-template-columns:1fr 1fr}
+    .header{padding:0 16px}
+    .main{padding:16px}
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useMemo } = React;
+
+function getStatus(expiry) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const exp = new Date(expiry); exp.setHours(0,0,0,0);
+  const diff = Math.ceil((exp - now) / (1000*60*60*24));
+  if (diff < 0) return { key: "expired", label: "منتهية", days: diff };
+  if (diff <= 60) return { key: "soon", label: "قريبة الانتهاء", days: diff };
+  return { key: "valid", label: "صالحة", days: diff };
+}
+
+function getProgress(expiry) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const exp = new Date(expiry); exp.setHours(0,0,0,0);
+  const diff = Math.ceil((exp - now) / (1000*60*60*24));
+  if (diff < 0) return 0;
+  return Math.min(100, Math.round((diff / 365) * 100));
+}
+
+function formatDate(d) {
+  if (!d) return "—";
+  const [y,m,day] = d.split("-");
+  const months = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+  return `${parseInt(day)} ${months[parseInt(m)-1]} ${y}`;
+}
+
+function getInitials(name) {
+  const parts = name.trim().split(" ");
+  return parts.length >= 2 ? parts[0][0] + parts[1][0] : parts[0].slice(0,2);
+}
+
+// ---- Firebase helpers ----
+async function fbAdd(data) {
+  const { db, collection, addDoc } = window.__firebase;
+  const ref = await addDoc(collection(db, "employees"), data);
+  return ref.id;
+}
+async function fbUpdate(id, data) {
+  const { db, doc, updateDoc } = window.__firebase;
+  await updateDoc(doc(db, "employees", id), data);
+}
+async function fbDelete(id) {
+  const { db, doc, deleteDoc } = window.__firebase;
+  await deleteDoc(doc(db, "employees", id));
+}
+function fbListen(callback) {
+  const { db, collection, onSnapshot } = window.__firebase;
+  return onSnapshot(collection(db, "employees"), (snap) => {
+    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(data);
+  });
+}
+
+// ---- Components ----
+function Modal({ onClose, onSave, initial, saving }) {
+  const [form, setForm] = useState(initial || { name:"", idNumber:"", empId:"", expiry:"" });
+  const set = (k, v) => setForm(f => ({...f, [k]: v}));
+  const valid = form.name && form.idNumber && form.empId && form.expiry;
+  return (
+    <div className="modal-overlay" onClick={e => e.target===e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-title">
+          <span style={{fontSize:22}}>💊</span>
+          {initial ? "تعديل بيانات الموظف" : "إضافة موظف جديد"}
+        </div>
+        <div className="form-group">
+          <label className="form-label">الاسم الكامل</label>
+          <input className="form-input" placeholder="أدخل اسم الموظف" value={form.name} onChange={e=>set("name",e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">رقم الهوية</label>
+          <input className="form-input" placeholder="10 أرقام" value={form.idNumber} onChange={e=>set("idNumber",e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">الرقم الوظيفي</label>
+          <input className="form-input" placeholder="مثال: PH-007" value={form.empId} onChange={e=>set("empId",e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">تاريخ انتهاء الرخصة</label>
+          <input className="form-input" type="date" value={form.expiry} onChange={e=>set("expiry",e.target.value)} />
+        </div>
+        <div className="modal-actions">
+          <button className="btn btn-primary" style={{flex:1}} disabled={!valid||saving} onClick={()=>valid&&!saving&&onSave(form)}>
+            {saving ? "جاري الحفظ..." : initial ? "حفظ التعديلات" : "إضافة الموظف"}
+          </button>
+          <button className="btn btn-ghost" onClick={onClose} disabled={saving}>إلغاء</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ icon, value, label, color }) {
+  const colors = {
+    green:{bg:"#d1fae5",text:"#059669"},
+    orange:{bg:"#fef3c7",text:"#d97706"},
+    red:{bg:"#fee2e2",text:"#dc2626"},
+    blue:{bg:"#dbeafe",text:"#2563eb"},
+  };
+  const c = colors[color]||colors.blue;
+  return (
+    <div className="stat-card">
+      <div className="stat-icon" style={{background:c.bg,color:c.text}}>{icon}</div>
+      <div className="stat-info">
+        <div className="stat-value" style={{color:c.text}}>{value}</div>
+        <div className="stat-label">{label}</div>
+      </div>
+    </div>
+  );
+}
+
+function TableRow({ emp, onEdit, onDelete }) {
+  const st = getStatus(emp.expiry);
+  const prog = getProgress(emp.expiry);
+  const badgeClass = `badge-${st.key}`;
+  const progClass = `progress-${st.key}`;
+  return (
+    <tr>
+      <td>
+        <div className="employee-name">{emp.name}</div>
+        <div className="employee-id">{emp.empId}</div>
+      </td>
+      <td>{emp.idNumber}</td>
+      <td>{formatDate(emp.expiry)}</td>
+      <td><span className={`badge ${badgeClass}`}>{st.label}</span></td>
+      <td>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div className="progress-bar" style={{flex:1}}>
+            <div className={`progress-fill ${progClass}`} style={{width:`${prog}%`}}/>
+          </div>
+          <span style={{fontSize:11,color:"#6b7280",whiteSpace:"nowrap",minWidth:40}}>
+            {st.days < 0 ? `${Math.abs(st.days)}ي` : `${st.days}ي`}
+          </span>
+        </div>
+      </td>
+      <td>
+        <button className="action-btn action-edit" title="تعديل" onClick={()=>onEdit(emp)}>✏️</button>
+        <button className="action-btn action-delete" title="حذف" onClick={()=>onDelete(emp.id)}>🗑</button>
+      </td>
+    </tr>
+  );
+}
+
+function EmployeeCard({ emp, onEdit, onDelete }) {
+  const st = getStatus(emp.expiry);
+  const prog = getProgress(emp.expiry);
+  return (
+    <div className="employee-card">
+      <div className={`card-accent card-accent-${st.key}`}/>
+      <div className="card-header">
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <div className={`card-avatar avatar-${st.key}`}>{getInitials(emp.name)}</div>
+          <div>
+            <div className="card-name">{emp.name}</div>
+            <span className={`badge badge-${st.key}`} style={{marginTop:4}}>{st.label}</span>
+          </div>
+        </div>
+        <span style={{fontSize:11,color:"#6b7280",background:"#f3f4f6",padding:"2px 8px",borderRadius:20,fontWeight:600}}>{emp.empId}</span>
+      </div>
+      <div className="card-ids">
+        <div className="card-id-item">
+          <div className="card-id-label">رقم الهوية</div>
+          <div className="card-id-value">{emp.idNumber}</div>
+        </div>
+        <div className="card-id-item">
+          <div className="card-id-label">الأيام المتبقية</div>
+          <div className="card-id-value" style={{color:st.key==="valid"?"var(--green-dark)":st.key==="soon"?"var(--orange-dark)":"var(--red-dark)"}}>
+            {st.days < 0 ? `منذ ${Math.abs(st.days)} يوم` : `${st.days} يوم`}
+          </div>
+        </div>
+      </div>
+      <div className="card-expiry">
+        <div className="card-expiry-label">📅 تاريخ انتهاء الرخصة</div>
+        <div className="card-expiry-date">{formatDate(emp.expiry)}</div>
+        <div className="progress-bar">
+          <div className={`progress-fill progress-${st.key}`} style={{width:`${prog}%`}}/>
+        </div>
+      </div>
+      <div className="card-actions">
+        <button className="card-action-btn card-edit" onClick={()=>onEdit(emp)}>✏️ تعديل</button>
+        <button className="card-action-btn card-delete" onClick={()=>onDelete(emp.id)}>🗑 حذف</button>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [firebaseReady, setFirebaseReady] = useState(!!window.__firebase);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState("table");
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [modal, setModal] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!firebaseReady) {
+      const handler = () => setFirebaseReady(true);
+      window.addEventListener("firebase-ready", handler);
+      return () => window.removeEventListener("firebase-ready", handler);
+    }
+  }, [firebaseReady]);
+
+  useEffect(() => {
+    if (!firebaseReady) return;
+    setLoading(true);
+    const unsub = fbListen((data) => {
+      setEmployees(data);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [firebaseReady]);
+
+  const stats = useMemo(() => ({
+    total: employees.length,
+    valid: employees.filter(e => getStatus(e.expiry).key === "valid").length,
+    soon: employees.filter(e => getStatus(e.expiry).key === "soon").length,
+    expired: employees.filter(e => getStatus(e.expiry).key === "expired").length,
+  }), [employees]);
+
+  const filtered = useMemo(() => employees.filter(e => {
+    const q = search.toLowerCase();
+    const matchSearch = !q || e.name.toLowerCase().includes(q) || e.idNumber.includes(q) || e.empId.toLowerCase().includes(q);
+    const matchFilter = filter === "all" || getStatus(e.expiry).key === filter;
+    return matchSearch && matchFilter;
+  }), [employees, search, filter]);
+
+  const handleSave = async (form) => {
+    setSaving(true);
+    try {
+      if (modal && modal.id) {
+        await fbUpdate(modal.id, form);
+      } else {
+        await fbAdd(form);
+      }
+      setModal(null);
+    } catch(e) {
+      alert("حدث خطأ: " + e.message);
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id) => {
+    if (confirm("هل أنت متأكد من حذف هذا الموظف؟")) {
+      await fbDelete(id);
+    }
+  };
+
+  const filterTabs = [
+    { key:"all", label:`الكل (${stats.total})`, active:"active-all" },
+    { key:"valid", label:`صالحة (${stats.valid})`, active:"active-valid" },
+    { key:"soon", label:`قريبة الانتهاء (${stats.soon})`, active:"active-soon" },
+    { key:"expired", label:`منتهية (${stats.expired})`, active:"active-expired" },
+  ];
+
+  if (!firebaseReady || loading) {
+    return (
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",flexDirection:"column",gap:12,color:"#6b7280"}}>
+        <div className="loading-spinner"/>
+        <div style={{fontSize:14}}>جاري الاتصال بقاعدة البيانات...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app">
+      <header className="header">
+        <div className="logo">
+          <div className="logo-icon">💊</div>
+          <div>
+            <div className="logo-text">ساجا الصيادلة</div>
+            <div className="logo-sub">نظام متابعة رخص الموظفين</div>
+          </div>
+        </div>
+        <div className="header-actions">
+          <span className="firebase-badge">🔥 متصل بـ Firebase</span>
+          <button className="btn btn-primary" onClick={()=>setModal("add")}>
+            <span style={{fontSize:16,fontWeight:700}}>+</span> إضافة موظف
+          </button>
+        </div>
+      </header>
+
+      <main className="main">
+        <div className="stats-grid">
+          <StatCard icon="👥" value={stats.total} label="إجمالي الموظفين" color="blue"/>
+          <StatCard icon="✅" value={stats.valid} label="رخص صالحة" color="green"/>
+          <StatCard icon="⚠️" value={stats.soon} label="قريبة الانتهاء" color="orange"/>
+          <StatCard icon="❌" value={stats.expired} label="رخص منتهية" color="red"/>
+        </div>
+
+        <div className="toolbar">
+          <div className="search-wrap">
+            <span className="search-icon">🔍</span>
+            <input placeholder="بحث بالاسم أو رقم الهوية أو الرقم الوظيفي..." value={search} onChange={e=>setSearch(e.target.value)} />
+          </div>
+          <div className="view-toggle">
+            <button className={`view-btn${view==="table"?" active":""}`} onClick={()=>setView("table")} title="عرض الجدول">☰</button>
+            <button className={`view-btn${view==="grid"?" active":""}`} onClick={()=>setView("grid")} title="عرض البطاقات">⊞</button>
+          </div>
+        </div>
+
+        <div className="filter-tabs">
+          {filterTabs.map(t => (
+            <button key={t.key} className={`filter-tab ${filter===t.key ? t.active : ""}`} onClick={()=>setFilter(t.key)}>{t.label}</button>
+          ))}
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">{employees.length === 0 ? "💊" : "🔍"}</div>
+            <div className="empty-text">{employees.length === 0 ? "لا يوجد موظفون بعد" : "لا توجد نتائج"}</div>
+            <div className="empty-sub">{employees.length === 0 ? "اضغط إضافة موظف للبدء" : "جرب تغيير كلمة البحث أو الفلتر"}</div>
+          </div>
+        ) : view === "table" ? (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>الموظف</th>
+                  <th>رقم الهوية</th>
+                  <th>تاريخ الانتهاء</th>
+                  <th>الحالة</th>
+                  <th>المدة المتبقية</th>
+                  <th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(e => <TableRow key={e.id} emp={e} onEdit={setModal} onDelete={handleDelete}/>)}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="grid-view">
+            {filtered.map(e => <EmployeeCard key={e.id} emp={e} onEdit={setModal} onDelete={handleDelete}/>)}
+          </div>
+        )}
+      </main>
+
+      {(modal === "add" || (modal && modal.id)) && (
+        <Modal onClose={()=>!saving&&setModal(null)} onSave={handleSave} initial={modal !== "add" ? modal : null} saving={saving}/>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.render(<App/>, document.getElementById("root"));
+</script>
+</body>
+</html>
