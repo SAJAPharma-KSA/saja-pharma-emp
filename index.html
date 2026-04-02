@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ساجا الصيادلة – متابعة الرخص</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     Firebase: Auth + Firestore
+     ═══════════════════════════════════════════════════════════ -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getFirestore, collection, addDoc, updateDoc, deleteDoc,
+    doc, onSnapshot, setDoc, getDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import {
+    getAuth, signInWithEmailAndPassword,
+    signOut, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA2_Jsv3jyre4Hu0iaew5bzprkN9fdhSi4",
+    authDomain: "saja-pharmacy.firebaseapp.com",
+    projectId: "saja-pharmacy",
+    storageBucket: "saja-pharmacy.firebasestorage.app",
+    messagingSenderId: "292288798852",
+    appId: "1:292288798852:web:23fc2fcdf26c032493e2d1"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+  const auth = getAuth(app);
+
+  window.__firebase = {
+    db, auth,
+    collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, setDoc, getDoc,
+    signInWithEmailAndPassword, signOut, onAuthStateChanged
+  };
+  window.dispatchEvent(new Event("firebase-ready"));
+</script>
+
+<!--
+  ════════════════════════════════════════════════════════════════
+  قواعد Firestore الأمنية – ضعها في Firebase Console > Firestore > Rules
+  ════════════════════════════════════════════════════════════════
+  rules_version = '2';
+  service cloud.firestore {
+    match /databases/{database}/documents {
+      match /{document=**} {
+        allow read, write: if request.auth != null;
+      }
+    }
+  }
+  ════════════════════════════════════════════════════════════════
+-->
+
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'IBM Plex Sans Arabic', sans-serif; background: #f0f4f8; min-height: 100vh; direction: rtl; }
+
+:root {
+  --green:#10b981; --green-light:#d1fae5; --green-dark:#065f46;
+  --orange:#f59e0b; --orange-light:#fef3c7; --orange-dark:#92400e;
+  --red:#ef4444;   --red-light:#fee2e2;   --red-dark:#7f1d1d;
+  --blue:#3b82f6;  --blue-light:#dbeafe;  --blue-dark:#1e40af;
+  --purple:#8b5cf6; --purple-light:#ede9fe; --purple-dark:#5b21b6;
+  --gray:#6b7280;  --gray-light:#f3f4f6;
+  --white:#ffffff; --border:#e5e7eb;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.07),0 2px 4px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.10),0 4px 10px rgba(0,0,0,0.06);
+}
+
+/* ── Layout ── */
+.app { display:flex; flex-direction:column; min-height:100vh; }
+
+/* ── Header ── */
+.header {
+  background:#fff; border-bottom:1px solid var(--border);
+  padding:0 24px; height:64px;
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:100; box-shadow:var(--shadow);
+}
+.logo { display:flex; align-items:center; gap:10px; }
+.logo-icon {
+  width:36px; height:36px; background:linear-gradient(135deg,#059669,#10b981);
+  border-radius:10px; display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:18px; font-weight:700;
+}
+.logo-text { font-size:15px; font-weight:700; color:#111827; line-height:1.2; }
+.logo-sub  { font-size:11px; color:var(--gray); font-weight:400; }
+.header-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.user-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  background:#f0fdf4; border:1px solid #bbf7d0; border-radius:20px;
+  padding:4px 10px; font-size:11px; color:#166534; font-weight:500;
+}
+.firebase-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  background:#fff7ed; border:1px solid #fed7aa; border-radius:20px;
+  padding:4px 10px; font-size:11px; color:#c2410c; font-weight:500;
+}
+
+/* ── Buttons ── */
+.btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 16px; border-radius:8px; font-size:13px; font-weight:500;
+  cursor:pointer; border:none; transition:all 0.2s; font-family:inherit;
+}
+.btn:disabled { opacity:0.6; cursor:not-allowed; }
+.btn-primary {
+  background:linear-gradient(135deg,#059669,#10b981); color:#fff;
+  box-shadow:0 2px 4px rgba(16,185,129,0.3);
+}
+.btn-primary:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 4px 8px rgba(16,185,129,0.4); }
+.btn-danger { background:linear-gradient(135deg,#dc2626,#ef4444); color:#fff; }
+.btn-danger:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 4px 8px rgba(239,68,68,0.4); }
+.btn-ghost { background:transparent; color:var(--gray); border:1px solid var(--border); }
+.btn-ghost:hover:not(:disabled) { background:var(--gray-light); }
+.btn-logout {
+  background:transparent; color:var(--gray); border:1px solid var(--border);
+  font-size:12px; padding:6px 12px;
+}
+.btn-logout:hover { background:var(--red-light); color:var(--red-dark); border-color:var(--red); }
+
+/* ── Main ── */
+.main { flex:1; padding:24px; max-width:1440px; margin:0 auto; width:100%; }
+
+/* ── Stats Grid ── */
+.stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+.stat-card {
+  background:#fff; border-radius:16px; padding:20px;
+  box-shadow:var(--shadow); border:1px solid var(--border);
+  display:flex; align-items:center; gap:16px;
+  transition:transform 0.2s, box-shadow 0.2s;
+}
+.stat-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); }
+.stat-icon { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.stat-value { font-size:28px; font-weight:700; color:#111827; line-height:1; }
+.stat-label { font-size:12px; color:var(--gray); margin-top:4px; font-weight:500; }
+
+/* ── Toolbar ── */
+.toolbar { display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+.search-wrap { flex:1; min-width:200px; position:relative; }
+.search-wrap input {
+  width:100%; padding:10px 16px 10px 40px;
+  border:1px solid var(--border); border-radius:10px;
+  font-size:13px; font-family:inherit; color:#111827;
+  background:#fff; outline:none; transition:border-color 0.2s, box-shadow 0.2s; direction:rtl;
+}
+.search-wrap input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(59,130,246,0.1); }
+.search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--gray); font-size:14px; pointer-events:none; }
+.dept-select {
+  padding:9px 14px; border:1px solid var(--border); border-radius:10px;
+  font-size:13px; font-family:inherit; color:#374151; background:#fff;
+  outline:none; cursor:pointer; min-width:170px;
+}
+.dept-select:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(59,130,246,0.1); }
+.view-toggle { display:flex; background:var(--gray-light); border-radius:8px; padding:3px; gap:2px; }
+.view-btn { padding:6px 10px; border-radius:6px; border:none; background:transparent; cursor:pointer; color:var(--gray); font-size:14px; transition:all 0.2s; }
+.view-btn.active { background:#fff; color:#111827; box-shadow:var(--shadow); }
+
+/* ── Filter Tabs ── */
+.filter-tabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+.filter-tab {
+  padding:6px 14px; border-radius:20px; font-size:12px; font-weight:500;
+  cursor:pointer; border:1px solid var(--border); background:#fff; color:var(--gray);
+  transition:all 0.2s; font-family:inherit;
+}
+.filter-tab.active-all     { background:#111827; color:#fff; border-color:#111827; }
+.filter-tab.active-valid   { background:var(--green-light); color:var(--green-dark); border-color:var(--green); }
+.filter-tab.active-soon    { background:var(--orange-light); color:var(--orange-dark); border-color:var(--orange); }
+.filter-tab.active-expired { background:var(--red-light); color:var(--red-dark); border-color:var(--red); }
+
+/* ── Table ── */
+.table-wrap { background:#fff; border-radius:16px; box-shadow:var(--shadow); border:1px solid var(--border); overflow:hidden; }
+table { width:100%; border-collapse:collapse; }
+th {
+  background:#f8fafc; padding:12px 16px; text-align:right;
+  font-size:11px; font-weight:600; color:var(--gray);
+  text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+td { padding:14px 16px; border-bottom:1px solid #f3f4f6; vertical-align:middle; font-size:13px; color:#374151; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:#fafafa; }
+.employee-name { font-weight:600; color:#111827; font-size:14px; }
+.employee-id   { font-size:11px; color:var(--gray); margin-top:2px; }
+
+/* ── Badges ── */
+.badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600; white-space:nowrap;
+}
+.badge-valid   { background:var(--green-light); color:var(--green-dark); }
+.badge-soon    { background:var(--orange-light); color:var(--orange-dark); }
+.badge-expired { background:var(--red-light); color:var(--red-dark); }
+.badge-dept    { background:var(--purple-light); color:var(--purple-dark); font-size:10px; padding:3px 8px; }
+.badge-license { background:var(--blue-light); color:var(--blue-dark); font-size:10px; padding:3px 8px; }
+
+/* ── Progress Bar ── */
+.progress-bar { height:6px; background:#e5e7eb; border-radius:99px; overflow:hidden; min-width:80px; }
+.progress-fill { height:100%; border-radius:99px; transition:width 0.5s; }
+.progress-valid   { background:var(--green); }
+.progress-soon    { background:var(--orange); }
+.progress-expired { background:var(--red); }
+
+/* ── Action Buttons (Table) ── */
+.action-btn {
+  width:30px; height:30px; border-radius:7px; border:1px solid var(--border);
+  background:#fff; cursor:pointer; display:inline-flex; align-items:center;
+  justify-content:center; font-size:13px; transition:all 0.2s; margin:0 2px;
+}
+.action-btn:hover { background:var(--gray-light); }
+.action-edit:hover   { border-color:var(--blue); color:var(--blue); background:var(--blue-light); }
+.action-delete:hover { border-color:var(--red); color:var(--red); background:var(--red-light); }
+
+/* ── Grid View ── */
+.grid-view { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+.employee-card {
+  background:#fff; border-radius:16px; padding:20px;
+  box-shadow:var(--shadow); border:1px solid var(--border);
+  transition:transform 0.2s, box-shadow 0.2s; position:relative; overflow:hidden;
+}
+.employee-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-md); }
+.card-accent { position:absolute; top:0; left:0; right:0; height:4px; }
+.card-accent-valid   { background:linear-gradient(90deg,var(--green),#34d399); }
+.card-accent-soon    { background:linear-gradient(90deg,var(--orange),#fbbf24); }
+.card-accent-expired { background:linear-gradient(90deg,var(--red),#f87171); }
+.card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+.card-avatar {
+  width:44px; height:44px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; font-weight:700; color:#fff; flex-shrink:0;
+}
+.avatar-valid   { background:linear-gradient(135deg,var(--green),#34d399); }
+.avatar-soon    { background:linear-gradient(135deg,var(--orange),#fbbf24); }
+.avatar-expired { background:linear-gradient(135deg,var(--red),#f87171); }
+.card-name { font-size:15px; font-weight:700; color:#111827; }
+.card-badges { display:flex; gap:4px; flex-wrap:wrap; margin:6px 0 10px; }
+.card-ids { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+.card-id-item { background:#f8fafc; border-radius:8px; padding:8px 10px; }
+.card-id-label { font-size:10px; color:var(--gray); font-weight:500; margin-bottom:2px; }
+.card-id-value { font-size:12px; font-weight:600; color:#374151; }
+.card-expiry { margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.card-expiry-label { font-size:11px; color:var(--gray); margin-bottom:6px; }
+.card-expiry-date  { font-size:13px; font-weight:600; color:#111827; margin-bottom:8px; }
+.card-notify { font-size:11px; color:var(--gray); margin-top:8px; display:flex; align-items:center; gap:4px; }
+.card-actions { display:flex; gap:8px; margin-top:14px; }
+.card-action-btn {
+  flex:1; padding:7px; border-radius:8px; border:1px solid var(--border);
+  background:#fff; cursor:pointer; font-size:12px; font-weight:500;
+  transition:all 0.2s; font-family:inherit;
+  display:flex; align-items:center; justify-content:center; gap:5px; color:var(--gray);
+}
+.card-action-btn:hover { background:var(--gray-light); }
+.card-edit:hover   { border-color:var(--blue); color:var(--blue); background:var(--blue-light); }
+.card-delete:hover { border-color:var(--red);  color:var(--red);  background:var(--red-light); }
+
+/* ── Modals ── */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1000;
+  display:flex; align-items:center; justify-content:center;
+  padding:16px; backdrop-filter:blur(3px);
+}
+.modal {
+  background:#fff; border-radius:20px; padding:28px; width:100%; max-width:520px;
+  box-shadow:var(--shadow-lg); animation:slideUp 0.25s ease;
+  max-height:92vh; overflow-y:auto;
+}
+@keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+.modal-title { font-size:18px; font-weight:700; color:#111827; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+.form-group { margin-bottom:16px; }
+.form-label { display:block; font-size:12px; font-weight:600; color:#374151; margin-bottom:6px; }
+.form-label .req { color:var(--red); margin-right:2px; }
+.form-input {
+  width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:10px;
+  font-size:13px; font-family:inherit; color:#111827; outline:none;
+  transition:border-color 0.2s, box-shadow 0.2s; direction:rtl;
+}
+.form-input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(59,130,246,0.1); }
+.form-input.err { border-color:var(--red); box-shadow:0 0 0 3px rgba(239,68,68,0.1); }
+.form-hint  { font-size:11px; color:var(--gray); margin-top:4px; }
+.form-error { font-size:11px; color:var(--red-dark); margin-top:4px; }
+.form-section { border-top:1px solid var(--border); padding-top:16px; margin-top:4px; }
+.form-section-title { font-size:11px; font-weight:600; color:var(--gray); margin-bottom:14px; text-transform:uppercase; letter-spacing:0.06em; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.modal-actions { display:flex; gap:10px; margin-top:24px; }
+
+/* ── Login Page ── */
+.login-page {
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,#f0fdf4 0%,#dbeafe 100%); padding:24px;
+}
+.login-card { background:#fff; border-radius:24px; padding:40px; width:100%; max-width:420px; box-shadow:var(--shadow-lg); }
+.login-logo { display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:32px; }
+.login-logo-icon {
+  width:56px; height:56px; background:linear-gradient(135deg,#059669,#10b981);
+  border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:26px;
+}
+.login-title { font-size:22px; font-weight:700; color:#111827; }
+.login-sub   { font-size:13px; color:var(--gray); }
+.login-error { background:var(--red-light); border:1px solid #fca5a5; border-radius:10px; padding:10px 14px; font-size:13px; color:var(--red-dark); }
+.login-footer { text-align:center; font-size:12px; color:var(--gray); margin-top:20px; }
+.login-note {
+  display:flex; align-items:flex-start; gap:8px;
+  background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px;
+  padding:12px 14px; font-size:12px; color:#166534; margin-top:16px; line-height:1.6;
+}
+
+/* ── Notification Banner ── */
+.notif-banner {
+  background:var(--orange-light); border:1px solid #fcd34d;
+  border-radius:12px; padding:12px 16px; margin-bottom:16px;
+  display:flex; align-items:center; gap:10px;
+  font-size:13px; color:var(--orange-dark);
+}
+
+/* ── Toast ── */
+.toast {
+  position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
+  background:#111827; color:#fff; padding:12px 22px; border-radius:12px;
+  font-size:13px; z-index:9999; box-shadow:var(--shadow-lg);
+  display:flex; align-items:center; gap:8px; white-space:nowrap;
+  animation:fadeUp 0.3s ease;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateX(-50%) translateY(10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+/* ── Empty / Error / Loading ── */
+.empty-state { text-align:center; padding:60px 20px; color:var(--gray); }
+.empty-icon  { font-size:48px; margin-bottom:12px; opacity:0.4; }
+.empty-text  { font-size:15px; font-weight:500; }
+.empty-sub   { font-size:13px; margin-top:4px; opacity:0.7; }
+.loading-center { display:flex; align-items:center; justify-content:center; height:100vh; flex-direction:column; gap:12px; color:var(--gray); }
+.loading-spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin 0.8s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── Responsive ── */
+@media(max-width:1024px) { .stats-grid{grid-template-columns:repeat(2,1fr)} }
+@media(max-width:768px)  { .grid-view{grid-template-columns:1fr} .logo-sub{display:none} .firebase-badge{display:none} .form-row{grid-template-columns:1fr} }
+@media(max-width:480px)  { .header{padding:0 14px} .main{padding:14px} .stats-grid{grid-template-columns:1fr 1fr} .toolbar{flex-direction:column;align-items:stretch} }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+// ══════════════════════════════════════════════════
+//  ⚙️  إعدادات EmailJS  – فعّل الإشعارات هنا
+// ══════════════════════════════════════════════════
+//  1. سجّل مجاناً على https://www.emailjs.com
+//  2. أنشئ Service (Gmail / Outlook / ...) واحفظ Service ID
+//  3. أنشئ Template بالمتغيرات التالية في نص الرسالة:
+//       {{employee_name}}  {{license_type}}  {{department}}
+//       {{expiry_date}}    {{days_remaining}}  {{to_email}}
+//  4. انسخ Public Key من Account > General
+// ══════════════════════════════════════════════════
+const EJ_SERVICE  = "YOUR_SERVICE_ID";   // ← ضع Service ID
+const EJ_TEMPLATE = "YOUR_TEMPLATE_ID";  // ← ضع Template ID
+const EJ_PUBKEY   = "YOUR_PUBLIC_KEY";   // ← ضع Public Key
+const WARN_DAYS   = 60;                   // إشعار قبل الانتهاء بـ 60 يوم
+// ══════════════════════════════════════════════════
+
+/* ──────────────── Utility helpers ──────────────── */
+function getStatus(expiry) {
+  if (!expiry) return { key:"expired", label:"بدون تاريخ", days:-999 };
+  try {
+    const now = new Date(); now.setHours(0,0,0,0);
+    const exp = new Date(expiry); exp.setHours(0,0,0,0);
+    if (isNaN(exp.getTime())) return { key:"expired", label:"تاريخ غير صحيح", days:-999 };
+    const diff = Math.ceil((exp - now) / 86400000);
+    if (diff < 0)          return { key:"expired", label:"منتهية",        days:diff };
+    if (diff <= WARN_DAYS) return { key:"soon",    label:"قريبة الانتهاء", days:diff };
+    return                        { key:"valid",   label:"صالحة",          days:diff };
+  } catch { return { key:"expired", label:"خطأ", days:-999 }; }
+}
+
+function getProgress(expiry) {
+  if (!expiry) return 0;
+  try {
+    const now = new Date(); now.setHours(0,0,0,0);
+    const exp = new Date(expiry); exp.setHours(0,0,0,0);
+    if (isNaN(exp.getTime())) return 0;
+    const diff = Math.ceil((exp - now) / 86400000);
+    if (diff <= 0) return 0;
+    return Math.min(100, Math.round((diff / 365) * 100));
+  } catch { return 0; }
+}
+
+function formatDate(d) {
+  if (!d) return "—";
+  try {
+    const [y, m, day] = d.split("-");
+    const mo = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+    return `${parseInt(day)} ${mo[parseInt(m)-1]} ${y}`;
+  } catch { return d; }
+}
+
+function getInitials(name) {
+  if (!name || !name.trim()) return "؟";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts.length >= 2 ? parts[0][0] + parts[1][0] : parts[0].slice(0, 2);
+}
+
+function todayStr() { return new Date().toISOString().split("T")[0]; }
+
+/* ──────────────── Firebase helpers ──────────────── */
+async function fbAdd(data) {
+  const { db, collection, addDoc } = window.__firebase;
+  const ref = await addDoc(collection(db, "employees"), data);
+  return ref.id;
+}
+async function fbUpdate(id, data) {
+  const { db, doc, updateDoc } = window.__firebase;
+  await updateDoc(doc(db, "employees", id), data);
+}
+async function fbDelete(id) {
+  const { db, doc, deleteDoc } = window.__firebase;
+  await deleteDoc(doc(db, "employees", id));
+}
+function fbListen(onData, onErr) {
+  const { db, collection, onSnapshot } = window.__firebase;
+  return onSnapshot(
+    collection(db, "employees"),
+    snap => onData(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+    err => onErr && onErr(err)
+  );
+}
+async function fbSignIn(email, pass) {
+  const { auth, signInWithEmailAndPassword } = window.__firebase;
+  return signInWithEmailAndPassword(auth, email, pass);
+}
+async function fbSignOut() {
+  const { auth, signOut } = window.__firebase;
+  return signOut(auth);
+}
+function fbAuthListen(cb) {
+  const { auth, onAuthStateChanged } = window.__firebase;
+  return onAuthStateChanged(auth, cb);
+}
+async function fbIsNotified(empId) {
+  const { db, doc, getDoc } = window.__firebase;
+  try {
+    const snap = await getDoc(doc(db, "notifications", `${empId}_${todayStr()}`));
+    return snap.exists();
+  } catch { return false; }
+}
+async function fbMarkNotified(empId) {
+  const { db, doc, setDoc } = window.__firebase;
+  await setDoc(doc(db, "notifications", `${empId}_${todayStr()}`), { date: todayStr() });
+}
+
+/* ──────────────── EmailJS notification ──────────────── */
+async function sendEmail(emp) {
+  if (EJ_PUBKEY === "YOUR_PUBLIC_KEY" || !emp.notifyEmail) return false;
+  const st = getStatus(emp.expiry);
+  try {
+    emailjs.init(EJ_PUBKEY);
+    await emailjs.send(EJ_SERVICE, EJ_TEMPLATE, {
+      to_email:       emp.notifyEmail,
+      employee_name:  emp.name,
+      license_type:   emp.licenseType || "—",
+      department:     emp.department  || "—",
+      expiry_date:    formatDate(emp.expiry),
+      days_remaining: st.days >= 0 ? `${st.days} يوم` : "منتهية",
+    });
+    return true;
+  } catch(e) { console.warn("EmailJS:", e); return false; }
+}
+
+async function runNotifications(employees) {
+  if (EJ_PUBKEY === "YOUR_PUBLIC_KEY") return 0;
+  let sent = 0;
+  for (const emp of employees) {
+    const st = getStatus(emp.expiry);
+    if ((st.key === "soon" || st.key === "expired") && emp.notifyEmail) {
+      const already = await fbIsNotified(emp.id).catch(() => false);
+      if (!already) {
+        const ok = await sendEmail(emp);
+        if (ok) { await fbMarkNotified(emp.id).catch(()=>{}); sent++; }
+      }
+    }
+  }
+  return sent;
+}
+
+/* ══════════════════════════════════════════════════════
+   COMPONENT: LoginPage
+═══════════════════════════════════════════════════════ */
+function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [pass,  setPass]  = useState("");
+  const [busy,  setBusy]  = useState(false);
+  const [err,   setErr]   = useState("");
+
+  const ERRORS = {
+    "auth/user-not-found":    "البريد الإلكتروني غير مسجّل",
+    "auth/wrong-password":    "كلمة المرور غير صحيحة",
+    "auth/invalid-email":     "صيغة البريد غير صحيحة",
+    "auth/too-many-requests": "تم تجاوز المحاولات، حاول لاحقًا",
+    "auth/invalid-credential":"البريد أو كلمة المرور غير صحيحة",
+  };
+
+  const submit = async () => {
+    if (!email || !pass) { setErr("يرجى إدخال البريد الإلكتروني وكلمة المرور"); return; }
+    setBusy(true); setErr("");
+    try { await fbSignIn(email, pass); }
+    catch(e) { setErr(ERRORS[e.code] || "حدث خطأ، حاول مجددًا"); }
+    setBusy(false);
+  };
+
+  const onKey = e => e.key === "Enter" && submit();
+
+  return (
+    <div className="login-page">
+      <div className="login-card">
+        <div className="login-logo">
+          <div className="login-logo-icon">💊</div>
+          <div>
+            <div className="login-title">ساجا الصيادلة</div>
+            <div className="login-sub">نظام متابعة رخص الموظفين</div>
+          </div>
+        </div>
+
+        {err && <div className="login-error" style={{marginBottom:16}}>⚠️ {err}</div>}
+
+        <div className="form-group">
+          <label className="form-label">البريد الإلكتروني</label>
+          <input className="form-input" type="email" placeholder="example@email.com"
+            value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={onKey}/>
+        </div>
+        <div className="form-group">
+          <label className="form-label">كلمة المرور</label>
+          <input className="form-input" type="password" placeholder="••••••••"
+            value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={onKey}/>
+        </div>
+        <button className="btn btn-primary" style={{width:"100%",justifyContent:"center",padding:"12px",marginTop:4}}
+          onClick={submit} disabled={busy}>
+          {busy ? "⏳ جاري تسجيل الدخول..." : "🔐 تسجيل الدخول"}
+        </button>
+
+        <div className="login-note" style={{marginTop:20}}>
+          <span>🔒</span>
+          <span>هذا النظام محمي بتسجيل الدخول. البيانات مشفّرة على Firebase وغير متاحة لأي جهة خارجية.</span>
+        </div>
+        <div className="login-footer">تواصل مع المسؤول للحصول على حسابك</div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   COMPONENT: ConfirmDeleteModal
+═══════════════════════════════════════════════════════ */
+function ConfirmDeleteModal({ name, onConfirm, onCancel }) {
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onCancel()}>
+      <div className="modal" style={{maxWidth:360,textAlign:"center"}}>
+        <div style={{fontSize:50,marginBottom:14}}>🗑️</div>
+        <div style={{fontSize:17,fontWeight:700,color:"#111827",marginBottom:8}}>تأكيد الحذف</div>
+        <div style={{fontSize:13,color:"#6b7280",marginBottom:24,lineHeight:1.7}}>
+          هل أنت متأكد من حذف<br/>
+          <strong style={{color:"#111827"}}>{name}</strong>؟<br/>
+          <span style={{color:var_red, fontSize:12}}>هذا الإجراء لا يمكن التراجع عنه.</span>
+        </div>
+        <div className="modal-actions">
+          <button className="btn btn-danger" style={{flex:1,justifyContent:"center"}} onClick={onConfirm}>نعم، احذف</button>
+          <button className="btn btn-ghost"  style={{flex:1,justifyContent:"center"}} onClick={onCancel}>إلغاء</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+const var_red = "#ef4444";
+
+/* ══════════════════════════════════════════════════════
+   COMPONENT: EmployeeModal (Add / Edit)
+═══════════════════════════════════════════════════════ */
+const EMPTY_FORM = { name:"", idNumber:"", empId:"", department:"", licenseType:"", expiry:"", notifyEmail:"" };
+
+function EmployeeModal({ onClose, onSave, initial, saving }) {
+  const [form,   setForm]   = useState(initial ? { ...EMPTY_FORM, ...initial } : { ...EMPTY_FORM });
+  const [errors, setErrors] = useState({});
+
+  const set = useCallback((k, v) => {
+    setForm(f => ({...f, [k]: v}));
+    setErrors(er => ({...er, [k]: ""}));
+  }, []);
+
+  const validate = () => {
+    const e = {};
+    if (!form.name.trim())         e.name        = "الاسم الكامل مطلوب";
+    if (!form.idNumber.trim())     e.idNumber    = "رقم الهوية مطلوب";
+    else if (!/^\d{10}$/.test(form.idNumber.trim())) e.idNumber = "يجب أن يكون رقم هوية مكوّنًا من 10 أرقام";
+    if (!form.empId.trim())        e.empId       = "الرقم الوظيفي مطلوب";
+    if (!form.department.trim())   e.department  = "اسم القسم مطلوب";
+    if (!form.licenseType.trim())  e.licenseType = "نوع الترخيص مطلوب";
+    if (!form.expiry)              e.expiry      = "تاريخ الانتهاء مطلوب";
+    if (form.notifyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.notifyEmail))
+      e.notifyEmail = "صيغة البريد الإلكتروني غير صحيحة";
+    return e;
+  };
+
+  const handleSubmit = () => {
+    const e = validate();
+    if (Object.keys(e).length > 0) { setErrors(e); return; }
+    onSave(form);
+  };
+
+  const F = ({ field, label, required, ...props }) => (
+    <div className="form-group">
+      <label className="form-label">{label}{required && <span className="req"> *</span>}</label>
+      <input className={`form-input${errors[field]?" err":""}`}
+        value={form[field]} onChange={e => set(field, e.target.value)} {...props}/>
+      {errors[field]
+        ? <div className="form-error">⚠ {errors[field]}</div>
+        : props.hint && <div className="form-hint">{props.hint}</div>}
+    </div>
+  );
+
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&!saving&&onClose()}>
+      <div className="modal">
+        <div className="modal-title">
+          <span style={{fontSize:22}}>💊</span>
+          {initial ? "تعديل بيانات الموظف" : "إضافة موظف جديد"}
+        </div>
+
+        {/* Personal */}
+        <F field="name" label="الاسم الكامل" required placeholder="أدخل اسم الموظف الكامل"/>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">رقم الهوية<span className="req"> *</span></label>
+            <input
+              className={`form-input${errors.idNumber?" err":""}`}
+              placeholder="10 أرقام" value={form.idNumber}
+              onChange={e => set("idNumber", e.target.value.replace(/\D/g,"").slice(0,10))}/>
+            {errors.idNumber
+              ? <div className="form-error">⚠ {errors.idNumber}</div>
+              : <div className="form-hint">{form.idNumber.length}/10</div>}
+          </div>
+          <F field="empId" label="الرقم الوظيفي" required placeholder="مثال: PH-007"/>
+        </div>
+
+        {/* License */}
+        <div className="form-section">
+          <div className="form-section-title">معلومات الترخيص</div>
+          <div className="form-row">
+            <F field="department"  label="القسم"        required placeholder="مثال: الصيدلة السريرية"/>
+            <F field="licenseType" label="نوع الترخيص"  required placeholder="مثال: رخصة صيدلاني"/>
+          </div>
+          <F field="expiry" label="تاريخ انتهاء الترخيص" required type="date"/>
+        </div>
+
+        {/* Notification */}
+        <div className="form-section">
+          <div className="form-section-title">إشعار البريد الإلكتروني</div>
+          <F field="notifyEmail" label="البريد الإلكتروني للإشعار"
+            type="email" placeholder="example@email.com  (اختياري)"
+            hint={`سيُرسل تلقائيًا قبل انتهاء الترخيص بـ ${WARN_DAYS} يومًا`}/>
+        </div>
+
+        <div className="modal-actions">
+          <button className="btn btn-primary" style={{flex:1,justifyContent:"center"}}
+            disabled={saving} onClick={handleSubmit}>
+            {saving ? "⏳ جاري الحفظ..." : initial ? "💾 حفظ التعديلات" : "➕ إضافة الموظف"}
+          </button>
+          <button className="btn btn-ghost" onClick={onClose} disabled={saving}>إلغاء</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   COMPONENT: StatCard
+═══════════════════════════════════════════════════════ */
+function StatCard({ icon, value, label, color }) {
+  const C = { green:{bg:"#d1fae5",text:"#059669"}, orange:{bg:"#fef3c7",text:"#d97706"}, red:{bg:"#fee2e2",text:"#dc2626"}, blue:{bg:"#dbeafe",text:"#2563eb"} };
+  const c = C[color] || C.blue;
+  return (
+    <div className="stat-card">
+      <div className="stat-icon" style={{background:c.bg,color:c.text}}>{icon}</div>
+      <div>
+        <div className="stat-value" style={{color:c.text}}>{value}</div>
+        <div className="stat-label">{label}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   COMPONENT: TableRow
+═══════════════════════════════════════════════════════ */
+function TableRow({ emp, onEdit, onDelete }) {
+  const st   = getStatus(emp.expiry);
+  const prog = getProgress(emp.expiry);
+  return (
+    <tr>
+      <td>
+        <div className="employee-name">{emp.name}</div>
+        <div className="employee-id">{emp.empId}</div>
+      </td>
+      <td>{emp.idNumber}</td>
+      <td>{emp.department  && <span className="badge badge-dept">🏢 {emp.department}</span>}</td>
+      <td>{emp.licenseType && <span className="badge badge-license">📋 {emp.licenseType}</span>}</td>
+      <td>{formatDate(emp.expiry)}</td>
+      <td><span className={`badge badge-${st.key}`}>{st.label}</span></td>
+      <td>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div className="progress-bar" style={{flex:1}}>
+            <div className={`progress-fill progress-${st.key}`} style={{width:`${prog}%`}}/>
+          </div>
+          <span style={{fontSize:11,color:"#6b7280",whiteSpace:"nowrap",minWidth:56}}>
+            {st.days < 0 ? `منذ ${Math.abs(st.days)}ي` : `${st.days}ي`}
+          </span>
+        </div>
+      </td>
+      <td>
+        <button className="action-btn action-edit"   title="تعديل" onClick={()=>onEdit(emp)}>✏️</button>
+        <button className="action-btn action-delete" title="حذف"   onClick={()=>onDelete(emp)}>🗑</button>
+      </td>
+    </tr>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   COMPONENT: EmployeeCard
+═══════════════════════════════════════════════════════ */
+function EmployeeCard({ emp, onEdit, onDelete }) {
+  const st   = getStatus(emp.expiry);
+  const prog = getProgress(emp.expiry);
+  return (
+    <div className="employee-card">
+      <div className={`card-accent card-accent-${st.key}`}/>
+      <div className="card-header">
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <div className={`card-avatar avatar-${st.key}`}>{getInitials(emp.name)}</div>
+          <div>
+            <div className="card-name">{emp.name}</div>
+            <span className={`badge badge-${st.key}`} style={{marginTop:4,display:"inline-flex"}}>{st.label}</span>
+          </div>
+        </div>
+        <span style={{fontSize:11,color:"#6b7280",background:"#f3f4f6",padding:"2px 8px",borderRadius:20,fontWeight:600}}>{emp.empId}</span>
+      </div>
+
+      <div className="card-badges">
+        {emp.department  && <span className="badge badge-dept">🏢 {emp.department}</span>}
+        {emp.licenseType && <span className="badge badge-license">📋 {emp.licenseType}</span>}
+      </div>
+
+      <div className="card-ids">
+        <div className="card-id-item">
+          <div className="card-id-label">رقم الهوية</div>
+          <div className="card-id-value">{emp.idNumber}</div>
+        </div>
+        <div className="card-id-item">
+          <div className="card-id-label">الأيام المتبقية</div>
+          <div className="card-id-value" style={{color:st.key==="valid"?"var(--green-dark)":st.key==="soon"?"var(--orange-dark)":"var(--red-dark)"}}>
+            {st.days < 0 ? `منذ ${Math.abs(st.days)} يوم` : `${st.days} يوم`}
+          </div>
+        </div>
+      </div>
+
+      <div className="card-expiry">
+        <div className="card-expiry-label">📅 تاريخ انتهاء الترخيص</div>
+        <div className="card-expiry-date">{formatDate(emp.expiry)}</div>
+        <div className="progress-bar">
+          <div className={`progress-fill progress-${st.key}`} style={{width:`${prog}%`}}/>
+        </div>
+      </div>
+
+      {emp.notifyEmail && (
+        <div className="card-notify">📧 {emp.notifyEmail}</div>
+      )}
+
+      <div className="card-actions">
+        <button className="card-action-btn card-edit"   onClick={()=>onEdit(emp)}>✏️ تعديل</button>
+        <button className="card-action-btn card-delete" onClick={()=>onDelete(emp)}>🗑 حذف</button>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   COMPONENT: Toast
+═══════════════════════════════════════════════════════ */
+function Toast({ msg, onDone }) {
+  useEffect(() => { const t = setTimeout(onDone, 3500); return () => clearTimeout(t); }, []);
+  return <div className="toast">✅ {msg}</div>;
+}
+
+/* ══════════════════════════════════════════════════════
+   COMPONENT: App  (main dashboard)
+═══════════════════════════════════════════════════════ */
+function App({ user }) {
+  const [employees,    setEmployees]    = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [dbError,      setDbError]      = useState(null);
+  const [view,         setView]         = useState("table");
+  const [search,       setSearch]       = useState("");
+  const [filter,       setFilter]       = useState("all");
+  const [deptFilter,   setDeptFilter]   = useState("all");
+  const [modal,        setModal]        = useState(null);   // null | "add" | emp-object
+  const [deleteTarget, setDeleteTarget] = useState(null);   // emp-object | null
+  const [saving,       setSaving]       = useState(false);
+  const [toast,        setToast]        = useState(null);
+  const notifDone = useRef(false);
+
+  // Firestore realtime listener
+  useEffect(() => {
+    setLoading(true);
+    const unsub = fbListen(
+      data => { setEmployees(data); setLoading(false); },
+      err  => { setDbError(err.message); setLoading(false); }
+    );
+    return () => unsub();
+  }, []);
+
+  // Send email notifications once after data loads
+  useEffect(() => {
+    if (!loading && employees.length > 0 && !notifDone.current) {
+      notifDone.current = true;
+      runNotifications(employees).then(n => {
+        if (n > 0) setToast(`تم إرسال ${n} إشعار بريدي`);
+      });
+    }
+  }, [loading, employees]);
+
+  const departments = useMemo(() =>
+    [...new Set(employees.map(e => e.department).filter(Boolean))].sort()
+  , [employees]);
+
+  const stats = useMemo(() => ({
+    total:   employees.length,
+    valid:   employees.filter(e => getStatus(e.expiry).key === "valid").length,
+    soon:    employees.filter(e => getStatus(e.expiry).key === "soon").length,
+    expired: employees.filter(e => getStatus(e.expiry).key === "expired").length,
+  }), [employees]);
+
+  const filtered = useMemo(() => employees.filter(e => {
+    const q = search.toLowerCase();
+    const matchSearch = !q
+      || e.name.toLowerCase().includes(q)
+      || (e.idNumber   ||"").includes(q)
+      || (e.empId      ||"").toLowerCase().includes(q)
+      || (e.department ||"").toLowerCase().includes(q)
+      || (e.licenseType||"").toLowerCase().includes(q);
+    const matchStatus = filter === "all" || getStatus(e.expiry).key === filter;
+    const matchDept   = deptFilter === "all" || e.department === deptFilter;
+    return matchSearch && matchStatus && matchDept;
+  }), [employees, search, filter, deptFilter]);
+
+  const handleSave = useCallback(async form => {
+    setSaving(true);
+    try {
+      if (modal && modal.id) {
+        await fbUpdate(modal.id, form);
+        setToast("تم تحديث بيانات الموظف بنجاح");
+      } else {
+        await fbAdd(form);
+        setToast("تمت إضافة الموظف بنجاح");
+      }
+      setModal(null);
+    } catch(e) { alert("حدث خطأ: " + e.message); }
+    setSaving(false);
+  }, [modal]);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget) return;
+    try {
+      await fbDelete(deleteTarget.id);
+      setToast(`تم حذف ${deleteTarget.name}`);
+    } catch(e) { alert("خطأ في الحذف: " + e.message); }
+    setDeleteTarget(null);
+  }, [deleteTarget]);
+
+  const filterTabs = [
+    { key:"all",     label:`الكل (${stats.total})`,              active:"active-all"     },
+    { key:"valid",   label:`✅ صالحة (${stats.valid})`,          active:"active-valid"   },
+    { key:"soon",    label:`⚠️ قريبة الانتهاء (${stats.soon})`, active:"active-soon"    },
+    { key:"expired", label:`❌ منتهية (${stats.expired})`,       active:"active-expired" },
+  ];
+
+  if (loading) return (
+    <div className="loading-center">
+      <div className="loading-spinner"/>
+      <div style={{fontSize:14}}>جاري تحميل البيانات...</div>
+    </div>
+  );
+
+  if (dbError) return (
+    <div className="loading-center">
+      <div style={{fontSize:48}}>⚠️</div>
+      <div style={{fontSize:16,fontWeight:700,color:"#111827"}}>خطأ في الاتصال بقاعدة البيانات</div>
+      <div style={{fontSize:13,color:"#6b7280"}}>{dbError}</div>
+      <button className="btn btn-primary" onClick={()=>window.location.reload()}>إعادة المحاولة</button>
+    </div>
+  );
+
+  return (
+    <div className="app">
+      {/* ─── Header ─── */}
+      <header className="header">
+        <div className="logo">
+          <div className="logo-icon">💊</div>
+          <div>
+            <div className="logo-text">ساجا الصيادلة</div>
+            <div className="logo-sub">نظام متابعة رخص الموظفين</div>
+          </div>
+        </div>
+        <div className="header-actions">
+          <span className="firebase-badge">🔥 Firebase</span>
+          <span className="user-badge">👤 {user.email}</span>
+          <button className="btn btn-logout" onClick={fbSignOut}>خروج 🚪</button>
+          <button className="btn btn-primary" onClick={()=>setModal("add")}>
+            <span style={{fontSize:16,fontWeight:700}}>+</span> إضافة موظف
+          </button>
+        </div>
+      </header>
+
+      <main className="main">
+        {/* Warning Banner */}
+        {(stats.soon > 0 || stats.expired > 0) && (
+          <div className="notif-banner">
+            ⚠️ يوجد <strong>{stats.soon + stats.expired}</strong> ترخيص يحتاج انتباهك
+            &nbsp;({stats.expired > 0 && <span>{stats.expired} منتهٍ </span>}
+            {stats.soon > 0 && <span>{stats.soon} قريب الانتهاء</span>})
+          </div>
+        )}
+
+        {/* Stats */}
+        <div className="stats-grid">
+          <StatCard icon="👥" value={stats.total}   label="إجمالي الموظفين"     color="blue"/>
+          <StatCard icon="✅" value={stats.valid}   label="تراخيص صالحة"        color="green"/>
+          <StatCard icon="⚠️" value={stats.soon}   label="قريبة الانتهاء"      color="orange"/>
+          <StatCard icon="❌" value={stats.expired} label="تراخيص منتهية"       color="red"/>
+        </div>
+
+        {/* Toolbar */}
+        <div className="toolbar">
+          <div className="search-wrap">
+            <span className="search-icon">🔍</span>
+            <input placeholder="بحث بالاسم، رقم الهوية، القسم، نوع الترخيص..."
+              value={search} onChange={e=>setSearch(e.target.value)}/>
+          </div>
+          {departments.length > 0 && (
+            <select className="dept-select" value={deptFilter} onChange={e=>setDeptFilter(e.target.value)}>
+              <option value="all">🏢 جميع الأقسام</option>
+              {departments.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          )}
+          <div className="view-toggle">
+            <button className={`view-btn${view==="table"?" active":""}`} onClick={()=>setView("table")} title="جدول">☰</button>
+            <button className={`view-btn${view==="grid" ?" active":""}`} onClick={()=>setView("grid")}  title="بطاقات">⊞</button>
+          </div>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="filter-tabs">
+          {filterTabs.map(t => (
+            <button key={t.key}
+              className={`filter-tab ${filter===t.key ? t.active : ""}`}
+              onClick={()=>setFilter(t.key)}>{t.label}</button>
+          ))}
+        </div>
+
+        {/* Content */}
+        {filtered.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">{employees.length===0 ? "💊" : "🔍"}</div>
+            <div className="empty-text">{employees.length===0 ? "لا يوجد موظفون بعد" : "لا توجد نتائج"}</div>
+            <div className="empty-sub">{employees.length===0 ? "اضغط إضافة موظف للبدء" : "جرب تغيير كلمة البحث أو الفلتر"}</div>
+          </div>
+        ) : view === "table" ? (
+          <div className="table-wrap" style={{overflowX:"auto"}}>
+            <table>
+              <thead>
+                <tr>
+                  <th>الموظف</th>
+                  <th>رقم الهوية</th>
+                  <th>القسم</th>
+                  <th>نوع الترخيص</th>
+                  <th>تاريخ الانتهاء</th>
+                  <th>الحالة</th>
+                  <th>المدة المتبقية</th>
+                  <th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(e =>
+                  <TableRow key={e.id} emp={e} onEdit={setModal} onDelete={setDeleteTarget}/>
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="grid-view">
+            {filtered.map(e =>
+              <EmployeeCard key={e.id} emp={e} onEdit={setModal} onDelete={setDeleteTarget}/>
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* Add / Edit Modal */}
+      {(modal === "add" || (modal && modal.id)) && (
+        <EmployeeModal
+          onClose={()=>!saving&&setModal(null)}
+          onSave={handleSave}
+          initial={modal !== "add" ? modal : null}
+          saving={saving}/>
+      )}
+
+      {/* Delete Confirm Modal */}
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          name={deleteTarget.name}
+          onConfirm={handleDeleteConfirm}
+          onCancel={()=>setDeleteTarget(null)}/>
+      )}
+
+      {/* Toast */}
+      {toast && <Toast msg={toast} onDone={()=>setToast(null)}/>}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   ROOT – handles Firebase init + Auth state
+═══════════════════════════════════════════════════════ */
+function Root() {
+  const [fbReady,     setFbReady]     = useState(!!window.__firebase);
+  const [user,        setUser]        = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    if (fbReady) return;
+    const h = () => setFbReady(true);
+    window.addEventListener("firebase-ready", h);
+    return () => window.removeEventListener("firebase-ready", h);
+  }, [fbReady]);
+
+  useEffect(() => {
+    if (!fbReady) return;
+    const unsub = fbAuthListen(u => { setUser(u); setAuthLoading(false); });
+    return () => unsub();
+  }, [fbReady]);
+
+  if (!fbReady || authLoading) return (
+    <div className="loading-center">
+      <div className="loading-spinner"/>
+      <div style={{fontSize:14}}>جاري تهيئة النظام...</div>
+    </div>
+  );
+
+  return user ? <App user={user}/> : <LoginPage/>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<Root/>);
+</script>
+</body>
+</html>
